@@ -2,6 +2,8 @@ import { exit } from "node:process"
 import { Server } from "@hapi/hapi"
 import { log } from "@serverless/utils/log.js"
 import { invocationsRoute, invokeAsyncRoute } from "./routes/index.js"
+import fs from "fs"
+import { join, resolve } from "node:path"
 
 export default class HttpServer {
   #lambda = null
@@ -10,7 +12,7 @@ export default class HttpServer {
 
   #server = null
 
-  constructor(options, lambda) {
+ constructor(options, lambda) {
     this.#lambda = lambda
     this.#options = options
 
@@ -19,9 +21,19 @@ export default class HttpServer {
     const serverOptions = {
       host,
       port: lambdaPort,
+      ...(options.httpsProtocol != null && {
+        tls: this.#loadCerts(options.httpsProtocol),
+      }),
     }
 
     this.#server = new Server(serverOptions)
+  }
+  
+  #loadCerts(httpsProtocol) {
+    return {
+      cert: fs.readFileSync(resolve(httpsProtocol, "cert.pem"), "utf8"),
+      key: fs.readFileSync(resolve(httpsProtocol, "key.pem"), "utf8"),
+    }
   }
 
   async start() {
